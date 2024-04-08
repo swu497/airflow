@@ -746,6 +746,7 @@ class Airflow(AirflowBaseView):
         current_page = request.args.get("page", default=0, type=int)
         arg_search_query = request.args.get("search")
         arg_tags_filter = request.args.getlist("tags")
+        arg_tags_filter_option = request.args.get("select")
         arg_status_filter = request.args.get("status")
         arg_sorting_key = request.args.get("sorting_key", "dag_id")
         arg_sorting_direction = request.args.get("sorting_direction", default="asc")
@@ -794,7 +795,12 @@ class Airflow(AirflowBaseView):
                 )
 
             if arg_tags_filter:
-                dags_query = dags_query.where(DagModel.tags.any(DagTag.name.in_(arg_tags_filter)))
+                if arg_tags_filter_option == 'AND':
+                    for tag in arg_tags_filter:
+                        dags_query = dags_query.where(DagModel.tags.any(DagTag.name == tag))
+                # default to OR
+                else:
+                    dags_query = dags_query.where(DagModel.tags.any(DagTag.name.in_(arg_tags_filter)))
 
             dags_query = dags_query.where(DagModel.dag_id.in_(filter_dag_ids))
             filtered_dag_count = get_query_count(dags_query, session=session)
@@ -870,6 +876,7 @@ class Airflow(AirflowBaseView):
             else:
                 current_dags = all_dags
                 num_of_all_dags = all_dags_count
+                logger.info("Else of current_dags no filters")
 
             if arg_sorting_key == "dag_id":
                 if arg_sorting_direction == "desc":
@@ -915,6 +922,7 @@ class Airflow(AirflowBaseView):
                 .unique()
                 .all()
             )
+            logger.info(f'dags: {dags}')
             can_create_dag_run = get_auth_manager().is_authorized_dag(
                 method="POST", access_entity=DagAccessEntity.RUN, user=g.user
             )

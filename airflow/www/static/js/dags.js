@@ -49,9 +49,27 @@ let nextDatasetsError;
 const DAG_RUN = "dag-run";
 const TASK_INSTANCE = "task-instance";
 
+// Set Default search option to OR
+let tagSearchOption = "OR";
+
 // auto refresh interval in milliseconds
 // (x2 the interval in tree/graph view since this page can take longer to refresh )
 const refreshIntervalMs = 2000;
+
+$("#tag_select_options").select2({
+  minimumResultsForSearch: Infinity,
+  placeholder: "OR",
+  width: '100px',
+});
+
+$("#tag_select_options").on("change", (e) => {
+  e.preventDefault();
+  const query = new URLSearchParams(window.location.search);
+  tagSearchOption = $(e.target).select2("val");
+  console.log($(e.target).select2("val"));
+  query.delete("select");
+  window.location = `${DAGS_INDEX}?select=${tagSearchOption}&${query.toString()}`;
+});
 
 $("#tags_filter").select2({
   placeholder: "Filter DAGs by tag",
@@ -62,6 +80,8 @@ $("#tags_filter").on("change", (e) => {
   e.preventDefault();
   const query = new URLSearchParams(window.location.search);
   const tags = $(e.target).select2("val");
+  console.log("tags");
+  console.log(tags);
   if (tags.length) {
     if (query.has("tags")) query.delete("tags");
     tags.forEach((value) => {
@@ -72,7 +92,7 @@ $("#tags_filter").on("change", (e) => {
     query.set("reset_tags", "reset");
   }
   if (query.has("page")) query.delete("page");
-  window.location = `${DAGS_INDEX}?${query.toString()}`;
+  window.location = `${DAGS_INDEX}?${query.toString()}`;  
 });
 
 $("#tags_form").on("reset", (e) => {
@@ -81,6 +101,7 @@ $("#tags_form").on("reset", (e) => {
   query.delete("tags");
   if (query.has("page")) query.delete("page");
   query.set("reset_tags", "reset");
+  console.log(`${DAGS_INDEX}?${query.toString()}`);
   window.location = `${DAGS_INDEX}?${query.toString()}`;
 });
 
@@ -469,6 +490,12 @@ const handleVisibilityChange = () => {
 
 document.addEventListener("visibilitychange", handleVisibilityChange);
 
+function setDefaultTagSearchOption() {
+  const query = new URLSearchParams(window.location.search);
+  tagSearchOption = query.get("select");
+  $("#tag_select_options").val(tagSearchOption).trigger("change.select2");
+}
+
 $(window).on("load", () => {
   initAutoRefresh();
 
@@ -484,6 +511,8 @@ $(window).on("load", () => {
   });
 
   getDagStats();
+
+  setDefaultTagSearchOption();
 });
 
 $(".js-next-run-tooltip").each((i, run) => {
